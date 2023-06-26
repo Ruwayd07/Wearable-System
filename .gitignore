@@ -1,32 +1,124 @@
-# Prerequisites
-*.d
+// Producers of the code: Ruwayd Raffa & Ethan Applefeld
+// Code production date: April 25, 2023
+// AME240; Cyborg / Wearable Computing / Augmented Fashion
+/* Hardware that is needed for this code to run:
+1- Water Sensor.
+2- Stepper Motor.
+3- A4988 Driver Module (which connects to both the stepper motor and the microcontroller).
+4- DC motor (and a fan blade)
+5- Force Sensitive Resistor (FSR)
+*/
 
-# Compiled Object files
-*.slo
-*.lo
-*.o
-*.obj
+// The serial communication code was borrowed from the "Digital Read Serial" example. 
+// Most parts of the stepper code were borrowed from the dotStarStepperMega example.
+// Most parts of the water sensor code were borrowed from https://arduinogetstarted.com/tutorials/arduino-water-sensor.
+// Some parts of the FSR code were borrowed from https://learn.adafruit.com/force-sensitive-resistor-fsr/using-an-fsr.
 
-# Precompiled Headers
-*.gch
-*.pch
 
-# Compiled Dynamic libraries
-*.so
-*.dylib
-*.dll
+// Stepper Configuration //
+#include <AccelStepper.h>
+AccelStepper myStepper(4, 2, 4, 3, 5); // define motor pins (0, 2, 1, 3) and interface mode (4)
+int targetPos = 400;
+// End Stepper Configuration //
 
-# Fortran module files
-*.mod
-*.smod
 
-# Compiled Static libraries
-*.lai
-*.la
-*.a
-*.lib
+// Timer Configuration //
+#include <elapsedMillis.h>
+elapsedMillis serialTimerWater; // Timer for serial communication for water sensor.
+elapsedMillis serialTimerFsr; // Timer for serial communication for fsr.
+// End Timer Configuration //
 
-# Executables
-*.exe
-*.out
-*.app
+
+// Water Sensor Configuration //
+int powerWater = 7;
+int signalWater = A5;
+int valueWater = 0; // variable to store the sensor value.
+const int thresholdWater = 100;
+// End Water Sensor Configuration // 
+
+
+// Fan Configuration //
+int fan = 8;
+// End Fan Configuration //
+
+
+// FSR Configuration //
+int fsr = A4;
+int valueFsr = 0; // variable to store the sensor value.
+// End FSR Configuration //
+
+
+
+
+void setup() {
+  // initialize serial communication at 9600 bits per second:
+  Serial.begin(9600);
+  pinMode(powerWater, OUTPUT); // set the water sesnor's power pin as an OUTPUT.
+  pinMode(fan, OUTPUT); // set the fan's pin as an OUTPUT.
+
+  myStepper.setMaxSpeed(400); // sets the maximum steps per second, which determines how fast the motor will turn.
+  myStepper.setAcceleration(400); // sets the acceleration rate in steps per second.
+  myStepper.setSpeed(300);
+}
+
+
+void loop() {
+  // put your main code here, to run repeatedly:
+  waterFan(); // When the water sensor detects water that exceeds the threshold, the fan will turn on until water level drops below threshold.
+  rotateFanStepper(); /* When the fsr detects pressure that exceeds the threshold, the stepper (and the attached fan) will rotate from one side to the other 
+  until pressure level drops below threshold. */  
+  
+
+
+}
+
+
+
+
+
+void waterFan () {
+  // print out the state of the water sensor once every half a second:
+  if (serialTimerWater >= 500) {
+    serialTimerWater = 0;
+  Serial.print("Water sensor value: ");
+  Serial.println(valueWater);
+  }
+
+  digitalWrite(powerWater, HIGH);  // turn the water sensor ON.
+  valueWater = analogRead(signalWater); // read the analog value from water sensor.
+
+    if (valueWater >= thresholdWater) {
+    digitalWrite(fan, HIGH);  // turn fan ON.
+  } else {
+    digitalWrite(fan, LOW);   // turn fan OFF.
+  }
+}
+
+
+
+void rotateFanStepper()
+{
+  // print out the state of the fsr once every half a second:
+  if (serialTimerFsr >= 500) {
+    serialTimerFsr = 0;
+  Serial.print("fsr value = ");
+  Serial.println(valueFsr);
+  }
+
+  valueFsr = analogRead(fsr); // read the analog value from fsr.
+
+  if (valueFsr >= 100) {
+    if (myStepper.distanceToGo() == 0)
+    {
+      targetPos = targetPos * -1; // This allows the stepper to turn back and forth between the target position and the "opposite" position automatically.
+  myStepper.moveTo(targetPos); 
+  myStepper.setMaxSpeed(400);
+  myStepper.setAcceleration(400);
+    }
+    myStepper.run(); // Tell stepper to run.
+  }
+}
+
+
+
+
