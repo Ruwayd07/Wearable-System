@@ -7,6 +7,7 @@
 3- A4988 Driver Module (which connects to both the stepper motor and the microcontroller).
 4- DC motor (and a fan blade)
 5- Force Sensitive Resistor (FSR)
+6- Arduino Board
 */
 
 // The serial communication code was borrowed from the "Digital Read Serial" example. 
